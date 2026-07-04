@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Goal - זירת המתאגרפים הסוערת</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+    <!-- FontAwesome for boxing & storm icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Rubik', 'sans-serif'],
+                    },
+                    colors: {
+                        stormy: {
+                            950: '#03070d',
+                            900: '#080f1e',
+                            800: '#121e36',
+                            700: '#213555',
+                            500: '#3f72af',
+                            400: '#4e9f3d',
+                            300: '#17b890',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes flash {
+            0%, 93%, 95%, 100% { background: transparent; }
+            94%, 94.5% { background: rgba(255, 255, 255, 0.15); filter: brightness(1.8); }
+        }
+        .lightning-bg {
+            animation: flash 6s infinite;
+        }
+        .rain-overlay {
+            background-image: url('https://www.transparenttextures.com/patterns/dark-matter.png');
+            opacity: 0.2;
+        }
+        .storm-ambient {
+            background: radial-gradient(circle at top, #121e36 0%, #03070d 100%);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 25px rgba(23, 184, 144, 0.25);
+        }
+        .glow-red {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+        }
+        .glow-green {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+        }
+        /* Scrollbar customization */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #03070d;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #213555;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="storm-ambient text-white font-sans antialiased min-h-screen relative overflow-x-hidden selection:bg-emerald-500 selection:text-black">
+
+    <div class="fixed inset-0 z-0 pointer-events-none lightning-bg"></div>
+    <div class="fixed inset-0 z-0 pointer-events-none rain-overlay"></div>
+    
+    <!-- Custom Confirmation Modal for Deletion -->
+    <div id="deleteConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md hidden px-4" dir="rtl">
+        <div class="bg-stormy-900 border-2 border-red-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl glow-red relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-20 h-20 bg-red-500/10 rounded-full blur-xl"></div>
+            <div class="w-14 h-14 bg-red-500/20 border-2 border-red-500/40 rounded-full flex items-center justify-center mx-auto text-red-400 text-2xl mb-4 animate-bounce">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <h3 class="text-xl font-black text-white mb-2">מחיקת משתתף מהזירה!</h3>
+            <p id="deleteModalText" class="text-xs text-slate-300 leading-relaxed mb-6">האם אתה בטוח שברצונך למחוק את המשתתף מהרשימה? פעולה זו היא סופית לחלוטין!</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button id="confirmDeleteBtn" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-black text-sm py-3 rounded-xl shadow-lg shadow-red-500/20 active:scale-95 transition-all">
+                    כן, מחק! 🥊
+                </button>
+                <button onclick="closeDeleteModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm py-3 rounded-xl active:scale-95 transition-all">
+                    ביטול
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Immersive Top Header Graphic -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 opacity-25 pointer-events-none w-full max-w-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" class="w-full">
+            <path fill="#121e36" fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,218.7C672,203,768,149,864,138.7C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+        </svg>
+    </div>
+
+    <!-- Main Container -->
+    <div class="relative z-10 max-w-lg mx-auto px-4 py-6 flex flex-col justify-between min-h-screen">
+        
+        <header class="text-center mb-6">
+            <!-- Warning Badge -->
+            <div class="inline-flex items-center justify-center bg-red-950/90 border-2 border-red-500 rounded-full px-4 py-1.5 mb-4 shadow-lg glow-red animate-pulse">
+                <i class="fa-solid fa-glove-boxing text-red-500 ml-2 text-sm animate-bounce"></i>
+                <span class="text-xs font-black tracking-widest text-red-200 uppercase">אירוע סגור - למתאגרפים בלבד! 🥊</span>
+            </div>
+            
+            <!-- App Main Title -->
+            <div class="relative inline-block mb-1">
+                <h1 class="text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white via-slate-300 to-emerald-400 bg-clip-text text-transparent uppercase py-1">
+                    WATER GOAL
+                </h1>
+                <div class="absolute -top-3 -right-6 text-xl text-emerald-400 transform rotate-12">⚡</div>
+                <div class="absolute -bottom-1 -left-6 text-xl text-emerald-400 transform -rotate-12">⚡</div>
+            </div>
+
+            <p class="text-lg font-bold text-slate-300 mt-2 flex items-center justify-center gap-2">
+                <span>⚡</span>
+                טורניר כדורגל מים בסערה
+                <span>⚡</span>
+            </p>
+        </header>
+
+        <div id="countdownContainer" class="bg-gradient-to-r from-stormy-900/90 to-stormy-800/90 border-2 border-emerald-500/20 rounded-2xl p-4 text-center shadow-lg mb-6 max-w-sm mx-auto">
+            <h4 class="text-xs text-emerald-400 font-extrabold mb-2.5 flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-stopwatch animate-pulse"></i> הזירה נפתחת בעוד:
+            </h4>
+            <div class="grid grid-cols-4 gap-2 text-center" dir="ltr">
+                <div class="bg-stormy-950/80 p-2 rounded-xl border border-slate-700/50">
+                    <span id="days" class="text-xl font-black text-emerald-400 block">00</span>
+                    <span class="text-[9px] text-slate-400 font-bold">ימים</span>
+                </div>
+                <div class="bg-stormy-950/80 p-2 rounded-xl border border-slate-700/50">
+                    <span id="hours" class="text-xl font-black text-emerald-400 block">00</span>
+                    <span class="text-[9px] text-slate-400 font-bold">שעות</span>
+                </div>
+                <div class="bg-stormy-950/80 p-2 rounded-xl border border-slate-700/50">
+                    <span id="minutes" class="text-xl font-black text-emerald-400 block">00</span>
+                    <span class="text-[9px] text-slate-400 font-bold">דקות</span>
+                </div>
+                <div class="bg-stormy-950/80 p-2 rounded-xl border border-slate-700/50">
+                    <span id="seconds" class="text-xl font-black text-red-500 block animate-pulse">00</span>
+                    <span class="text-[9px] text-slate-400 font-bold">שניות</span>
+                </div>
+            </div>
+        </div>
+
+        <section class="grid grid-cols-2 gap-3 mb-6">
+            
+            <!-- Time, Date, and crucial prompt to arrive early -->
+            <div class="col-span-2 bg-gradient-to-r from-red-950/50 to-stormy-800/90 backdrop-blur-md border-2 border-red-500/60 rounded-2xl p-4 text-center shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-red-500 text-white font-black text-[10px] px-3 py-1 rounded-bl-xl uppercase tracking-widest">
+                    קריטי ביותר!
+                </div>
+                <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-2 text-red-400 border border-red-500/30">
+                    <i class="fa-solid fa-clock text-lg"></i>
+                </div>
+                <h3 class="text-xs text-red-300 font-extrabold">שעת הגעה וזמנים</h3>
+                <p class="text-xl font-black mt-1 text-white">31 באוגוסט (יום ב')</p>
+                <p class="text-xs text-slate-300 mt-1">שעת התחלה: 10:00</p>
+                <div class="mt-2.5 bg-red-500/30 py-1.5 px-4 rounded-xl border border-red-500 inline-block animate-pulse">
+                    <span class="text-sm font-black text-white">להגיע ברבע ל-10! (09:45)</span>
+                </div>
+            </div>
+
+            <!-- Location Details -->
+            <div class="bg-stormy-800/80 backdrop-blur-md border border-slate-700/50 rounded-2xl p-3 text-center shadow-lg flex flex-col justify-between">
+                <div>
+                    <div class="w-8 h-8 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-2 text-emerald-400">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                    </div>
+                    <h3 class="text-xs text-slate-400 font-semibold">איפה הזירה?</h3>
+                    <p class="text-sm font-black mt-1">חוף 4, שושנת העמק</p>
+                    <p class="text-[11px] text-slate-400 mt-1">כדורגל מים על החוף</p>
+                </div>
+                <a href="https://waze.com/ul?q=%D7%97%D7%95%D7%A3%204%20%D7%A9%D7%95%D7%A9%D7%A0%D7%AA%20%D7%94%D7%A2%D7%9E%D7%A7" target="_blank"
+                   class="mt-3 inline-flex items-center justify-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-[11px] py-2 px-3 rounded-xl transition-all shadow-md active:scale-95">
+                    <i class="fa-brands fa-waze text-xs"></i>
+                    ניווט ב-Waze 🚗
+                </a>
+            </div>
+
+            <!-- Cost and duration -->
+            <div class="bg-stormy-800/80 backdrop-blur-md border border-slate-700/50 rounded-2xl p-3 text-center shadow-lg">
+                <div class="w-8 h-8 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-2 text-emerald-400">
+                    <i class="fa-solid fa-hourglass-half"></i>
+                </div>
+                <h3 class="text-xs text-slate-400 font-semibold">עלות ומשך זמן</h3>
+                <p class="text-sm font-black mt-1">95 ש"ח למשתתף</p>
+                <p class="text-[11px] text-emerald-400 font-bold mt-1">שעה וחצי של טירוף!</p>
+            </div>
+
+            <!-- Tournament courts structure -->
+            <div class="col-span-2 bg-gradient-to-r from-stormy-800 to-stormy-900 backdrop-blur-md border border-emerald-500/20 rounded-2xl p-4 text-center shadow-lg flex items-center justify-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-slate-700/40 flex items-center justify-center text-emerald-400 shrink-0 border border-emerald-500/30">
+                    <i class="fa-solid fa-trophy text-lg"></i>
+                </div>
+                <div class="text-right">
+                    <h3 class="text-xs text-emerald-400 font-extrabold">זירת הקרב</h3>
+                    <p class="text-base font-black text-white">יש שני מגרשים פעילים!</p>
+                    <p class="text-[11px] text-slate-400">קרבות סוערים במקביל ללא הפסקה</p>
+                </div>
+            </div>
+        </section>
+
+        <main class="bg-gradient-to-b from-stormy-800 to-stormy-950 border-2 border-emerald-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden mb-6 glow-cyan">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl"></div>
+            <div class="absolute bottom-0 left-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl"></div>
+
+            <h2 class="text-xl font-black text-center mb-5 flex items-center justify-center gap-2">
+                <span>🥊</span>
+                אישור הגעה לזירה הסוערת
+                <span>⚽</span>
+            </h2>
+
+            <!-- Form Wrapper -->
+            <div id="rsvpFormContainer">
+                <form id="rsvpForm" class="space-y-4">
+                    <!-- First Name -->
+                    <div>
+                        <label for="firstName" class="block text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1.5 mr-1">שם פרטי</label>
+                        <input type="text" id="firstName" required placeholder="הכנס שם פרטי..." 
+                               class="w-full bg-stormy-900/90 border-2 border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all text-sm font-semibold">
+                    </div>
+
+                    <!-- Last Name -->
+                    <div>
+                        <label for="lastName" class="block text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1.5 mr-1">שם משפחה</label>
+                        <input type="text" id="lastName" required placeholder="הכנס שם משפחה..." 
+                               class="w-full bg-stormy-900/90 border-2 border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all text-sm font-semibold">
+                    </div>
+
+                    <!-- Phone Number -->
+                    <div>
+                        <label for="phone" class="block text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1.5 mr-1">מספר טלפון ליצירת קשר</label>
+                        <input type="tel" id="phone" required placeholder="לדוגמה: 0501234567" pattern="[0-9]{9,10}"
+                               class="w-full bg-stormy-900/90 border-2 border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all text-sm font-semibold text-left dir-ltr">
+                    </div>
+
+                    <!-- Attendance Selectors -->
+                    <div class="pt-2">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2 mr-1">האם אתה מגיע להילחם?</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button" id="btnYes" onclick="selectAttendance(true)"
+                                    class="py-3 px-4 rounded-xl border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-500/35 transition-all">
+                                <i class="fa-solid fa-circle-check"></i>
+                                מגיע/ה לקרב!
+                            </button>
+                            <button type="button" id="btnNo" onclick="selectAttendance(false)"
+                                    class="py-3 px-4 rounded-xl border border-slate-700 bg-stormy-900 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-red-500/10 transition-all">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                                לא מגיע/ה
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Submit RSVP Button -->
+                    <button type="submit" id="submitBtn"
+                            class="w-full mt-4 bg-gradient-to-r from-emerald-500 to-emerald-400 text-black font-black text-base py-3.5 px-6 rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                        <span>שלח אישור הגעה!</span>
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Success message container -->
+            <div id="successState" class="hidden text-center py-6 space-y-4">
+                <div class="w-16 h-16 bg-emerald-500/20 border border-emerald-500 rounded-full flex items-center justify-center mx-auto text-emerald-400 text-3xl animate-bounce">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3 class="text-2xl font-black text-white">רשמנו אותך בזירה!</h3>
+                <p class="text-slate-300 text-sm max-w-xs mx-auto">
+                    הפרטים שלך נשמרו במערכת. חלון וואטסאפ נפתח כעת כדי לשלוח אישור ישיר למארגן.
+                </p>
+
+                <!-- Dynamic WhatsApp notification block for the user -->
+                <div id="userWhatsAppAction" class="pt-2">
+                    <div class="bg-emerald-950/40 border border-emerald-500/30 p-4 rounded-2xl max-w-xs mx-auto space-y-3">
+                        <p class="text-xs text-emerald-300 font-bold">אם ההודעה לא נפתחה אוטומטית, לחץ כאן:</p>
+                        <a id="waDirectBtn" href="#" target="_blank"
+                           class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm py-2.5 px-4 rounded-xl shadow-lg glow-green w-full transition-all">
+                            <i class="fa-brands fa-whatsapp text-lg"></i>
+                            שלח הודעת וואטסאפ למארגן
+                        </a>
+                        <a id="calendarBtn" href="https://www.google.com/calendar/render?action=TEMPLATE&text=Water+Goal+%D7%9B%D7%93%D7%95%D7%A8%D7%92%D7%9C+%D7%9E%D7%99%D7%9D+%D7%91%D7%A1%D7%A2%D7%A8%D7%94+%F0%9F%A5%8A%E2%9A%BD&dates=20260831T064500Z/20260831T083000Z&details=%D7%98%D7%95%D7%A8%D7%A0%D7%99%D7%A8+%D7%9B%D7%93%D7%95%D7%A8%D7%92%D7%9C+%D7%9E%D7%99%D7%9D+%D7%91%D7%A1%D7%A2%D7%A8%D7%94+-+%D7%97%D7%95%D7%91%D7%94+%D7%9C%D7%94%D7%92%D7%99%D7%92+%D7%91-09%3A45%21&location=%D7%97%D7%95%D7%A3+4%2C+%D7%A9%D7%95%D7%A9%D7%A0%D7%AA+%D7%94%D7%A2%D7%9E%D7%A7" target="_blank"
+                           class="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs py-2.5 px-4 rounded-xl w-full transition-all border border-slate-700/60 shadow-md">
+                            <i class="fa-solid fa-calendar-plus text-emerald-400"></i>
+                            שמור ביומן גוגל 📅
+                        </a>
+                    </div>
+                </div>
+
+                <button onclick="resetForm()" class="text-xs text-emerald-400 hover:text-white font-bold underline transition-colors pt-4 block mx-auto">
+                    לעדכון פרטים או רישום נוסף
+                </button>
+            </div>
+        </main>
+
+        <!-- Organizer Panel -->
+        <footer class="mt-4">
+            <div class="bg-stormy-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-4 shadow-lg">
+                <button onclick="toggleAdminPanel()" class="w-full flex items-center justify-between text-slate-400 hover:text-white transition-colors">
+                    <span class="text-xs font-black tracking-widest uppercase flex items-center gap-2">
+                        <i class="fa-solid fa-user-shield text-emerald-400"></i>
+                        אזור המארגנים (הגדרות ורשימת נרשמים)
+                    </span>
+                    <i id="adminChevron" class="fa-solid fa-chevron-up text-xs transition-transform duration-300"></i>
+                </button>
+
+                <!-- Admin Dashboard Content -->
+                <div id="adminPanelContent" class="mt-4 space-y-4 hidden">
+                    <!-- Secure Gate -->
+                    <div id="adminAuthSection" class="space-y-3">
+                        <p class="text-xs text-slate-400 text-center">להצגת הרשימה, הכנס את הקוד הסודי:</p>
+                        <div class="flex gap-2 max-w-xs mx-auto">
+                            <input type="password" id="adminPasscode" placeholder="קוד סודי" class="bg-stormy-900/90 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-center w-full focus:outline-none focus:border-emerald-500">
+                            <button onclick="verifyAdmin()" class="bg-emerald-500 text-black font-bold px-4 py-1.5 rounded-lg text-xs hover:bg-emerald-400 transition-all">כניסה</button>
+                        </div>
+                    </div>
+
+                    <!-- Authorized Admin Panel -->
+                    <div id="adminAuthorizedArea" class="hidden space-y-4">
+                        
+                        <!-- Toggle Tabs for Settings and Stats -->
+                        <div class="grid grid-cols-2 gap-2 border-b border-slate-700 pb-2">
+                            <button id="tabStatsBtn" onclick="switchAdminTab('stats')" class="py-1.5 text-xs font-black text-emerald-400 border-b-2 border-emerald-500 transition-all">
+                                <i class="fa-solid fa-chart-simple ml-1"></i> נתונים ונרשמים
+                            </button>
+                            <button id="tabSettingsBtn" onclick="switchAdminTab('settings')" class="py-1.5 text-xs font-black text-slate-400 hover:text-white transition-all">
+                                <i class="fa-solid fa-bell ml-1"></i> הגדרות התראות
+                            </button>
+                        </div>
+
+                        <!-- TAB 1: Stats & List -->
+                        <div id="adminTabStats" class="space-y-4">
+                            <!-- Live Aggregated Statistics -->
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="bg-stormy-900/80 p-2 rounded-xl text-center border border-slate-700">
+                                    <span class="text-[9px] text-slate-400 block">סה"כ נרשמו</span>
+                                    <span id="statTotal" class="text-sm font-black text-emerald-400">0</span>
+                                </div>
+                                <div class="bg-stormy-900/80 p-2 rounded-xl text-center border border-slate-700">
+                                    <span class="text-[9px] text-emerald-400 block">מגיעים</span>
+                                    <span id="statComing" class="text-sm font-black text-emerald-400">0</span>
+                                </div>
+                                <div class="bg-stormy-900/80 p-2 rounded-xl text-center border border-slate-700">
+                                    <span class="text-[9px] text-red-400 block">לא מגיעים</span>
+                                    <span id="statNotComing" class="text-sm font-black text-red-400">0</span>
+                                </div>
+                                <div class="bg-emerald-950/40 p-2 rounded-xl text-center border border-emerald-500/30 col-span-1.5">
+                                    <span class="text-[9px] text-emerald-300 block">שולם בפועל 💰</span>
+                                    <span id="statCollected" class="text-xs font-black text-white">0 ₪</span>
+                                </div>
+                                <div class="bg-red-950/30 p-2 rounded-xl text-center border border-red-500/20 col-span-1.5">
+                                    <span class="text-[9px] text-red-300 block">חוב פתוח 💸</span>
+                                    <span id="statPending" class="text-xs font-black text-white">0 ₪</span>
+                                </div>
+                                <div class="col-span-3 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 p-2 rounded-xl text-center border border-emerald-500/30">
+                                    <span class="text-xs text-emerald-300 font-semibold">סכום צפוי לגבייה: <span id="statCash" class="font-bold text-white">0 ₪</span></span>
+                                </div>
+                            </div>
+
+                            <!-- Submissions Table -->
+                            <div class="overflow-hidden rounded-xl border border-slate-700 bg-stormy-900/90">
+                                <div class="max-h-60 overflow-y-auto">
+                                    <table class="w-full text-right text-xs">
+                                        <thead class="bg-slate-800 text-slate-300 uppercase font-black sticky top-0">
+                                            <tr>
+                                                <th class="p-2.5">שם וטלפון</th>
+                                                <th class="p-2.5 text-center">תשלום</th>
+                                                <th class="p-2.5 text-center">סטטוס</th>
+                                                <th class="p-2.5 text-center">מחיקה</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adminTableBody" class="divide-y divide-slate-800/60">
+                                            <tr>
+                                                <td colspan="4" class="p-4 text-center text-slate-500">אין עדיין נרשמים...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: Notifications Config -->
+                        <div id="adminTabSettings" class="hidden space-y-4 bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+                            <h4 class="text-xs font-black text-emerald-400 border-b border-slate-700 pb-1.5 flex items-center gap-1.5">
+                                <i class="fa-solid fa-sliders"></i> הגדרת התראות ואינטגרציות
+                            </h4>
+
+                            <!-- WhatsApp Config -->
+                            <div class="space-y-1.5">
+                                <label for="organizerPhone" class="block text-xs font-extrabold text-slate-300">מספר וואטסאפ שלך (לקבלת הודעות):</label>
+                                <input type="tel" id="organizerPhone" placeholder="לדוגמה: 972524300761" 
+                                       class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 text-left dir-ltr">
+                                <p class="text-[10px] text-slate-400">הכנס מספר טלפון מלא כולל קידומת מדינה (972 במקום ה-0 הראשון).</p>
+                            </div>
+
+                            <!-- Discord Webhook Integration -->
+                            <div class="space-y-1.5">
+                                <label for="webhookUrl" class="block text-xs font-extrabold text-slate-300">קישור Discord Webhook (התראות אוטומטיות):</label>
+                                <input type="url" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." 
+                                       class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 text-left dir-ltr">
+                                <p class="text-[10px] text-slate-400">כל נרשם חדש יישלח מיידית כהודעה לשרת הדיסקורד שלך.</p>
+                            </div>
+
+                            <!-- Audio Ring Bell test -->
+                            <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-300">בדוק סאונד של פעמון הזירה:</span>
+                                <button onclick="playBoxingBell()" class="bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500 text-emerald-300 font-bold px-3 py-1 rounded-lg text-xs transition-all">
+                                    <i class="fa-solid fa-bell-ring ml-1 animate-pulse"></i> צלצל בפעמון
+                                </button>
+                            </div>
+
+                            <!-- Save Config Button -->
+                            <button onclick="saveAdminSettings()" class="w-full bg-emerald-500 text-black font-black py-2 rounded-xl text-xs hover:bg-emerald-400 transition-all flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-floppy-disk"></i> שמור הגדרות התראות
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            
+            <p class="text-[10px] text-center text-slate-600 mt-4">Water Goal Invitation & RSVP Arena &copy; 2026. Only the strongest fighters survive.</p>
+        </footer>
+
+    </div>
+
+    <!-- Firebase Script Integrations -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, addDoc, onSnapshot, setDoc, getDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        let selectedAttending = true; 
+        let isUserAuthenticated = false;
+        let db;
+        let auth;
+        const appId = "water-goal-invite-storm";
+        let localRsvpCount = -1;
+
+        // Force Default Organizer Phone to the requested number: 972524300761
+        window.adminConfig = {
+            organizerPhone: '972524300761',
+            webhookUrl: ''
+        };
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "mock-api-key",
+                authDomain: "mock.firebaseapp.com",
+                projectId: "mock-project",
+                storageBucket: "mock.appspot.com",
+                messagingSenderId: "12345678",
+                appId: "1:1234:web:mock"
+              };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
+        // Authenticate
+        async function authenticateUser() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                isUserAuthenticated = true;
+                listenToRsvps();
+                loadNotificationSettings();
+            } catch (error) {
+                console.error("Firebase auth error:", error);
+            }
+        }
+
+        // Deletion handling logic inside module
+        let participantToDelete = null;
+
+        window.closeDeleteModal = function() {
+            document.getElementById('deleteConfirmModal').classList.add('hidden');
+            participantToDelete = null;
+        };
+
+        window.openDeleteModal = function(id, name, isLocal, localKey) {
+            participantToDelete = { id, name, isLocal, localKey };
+            document.getElementById('deleteModalText').innerText = `האם אתה בטוח שברצונך למחוק את "${name}" מהרשימה? פעולה זו היא סופית לחלוטין!`;
+            document.getElementById('deleteConfirmModal').classList.remove('hidden');
+        };
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            if (!participantToDelete) return;
+            const { id, isLocal, localKey } = participantToDelete;
+
+            try {
+                if (isLocal) {
+                    // Delete from local storage fallback
+                    let localList = JSON.parse(localStorage.getItem('local_rsvps') || '[]');
+                    localList = localList.filter(rsvp => `${rsvp.firstName}-${rsvp.lastName}-${rsvp.phone}` !== localKey);
+                    localStorage.setItem('local_rsvps', JSON.stringify(localList));
+                } else {
+                    // Delete from Live Firestore
+                    if (isUserAuthenticated && id) {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rsvps', id);
+                        await deleteDoc(docRef);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to delete participant:", err);
+            } finally {
+                window.closeDeleteModal();
+                window.triggerLocalRefresh();
+            }
+        });
+
+        window.togglePayment = async function(id, isLocal, localKey, currentPaid) {
+            const newPaidState = !currentPaid;
+            try {
+                if (isLocal) {
+                    let localList = JSON.parse(localStorage.getItem('local_rsvps') || '[]');
+                    localList = localList.map(rsvp => {
+                        if (`${rsvp.firstName}-${rsvp.lastName}-${rsvp.phone}` === localKey) {
+                            rsvp.paid = newPaidState;
+                        }
+                        return rsvp;
+                    });
+                    localStorage.setItem('local_rsvps', JSON.stringify(localList));
+                } else {
+                    if (isUserAuthenticated && id) {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rsvps', id);
+                        await updateDoc(docRef, { paid: newPaidState });
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to toggle payment status:", err);
+            } finally {
+                window.triggerLocalRefresh();
+            }
+        };
+
+        // Load Persistent Admin Notification configuration
+        async function loadNotificationSettings() {
+            if (!isUserAuthenticated) return;
+            try {
+                const settingsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+                const docSnap = await getDoc(settingsDocRef);
+                if (docSnap.exists()) {
+                    window.adminConfig = docSnap.data();
+                    if (!window.adminConfig.organizerPhone) {
+                        window.adminConfig.organizerPhone = '972524300761';
+                    }
+                    document.getElementById('organizerPhone').value = window.adminConfig.organizerPhone || '972524300761';
+                    document.getElementById('webhookUrl').value = window.adminConfig.webhookUrl || '';
+                } else {
+                    document.getElementById('organizerPhone').value = '972524300761';
+                }
+            } catch (error) {
+                console.error("Error loading notification settings:", error);
+            }
+        }
+
+        // Save Persistent Admin Config
+        window.saveAdminSettings = async function() {
+            if (!isUserAuthenticated) return;
+            const organizerPhone = document.getElementById('organizerPhone').value.trim() || '972524300761';
+            const webhookUrl = document.getElementById('webhookUrl').value.trim();
+
+            try {
+                const settingsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+                await setDoc(settingsDocRef, { organizerPhone, webhookUrl });
+                
+                window.adminConfig = { organizerPhone, webhookUrl };
+                showAdminNotice("ההגדרות נשמרו בהצלחה! ✅", "emerald");
+            } catch (error) {
+                console.error("Error saving notification settings:", error);
+                showAdminNotice("שגיאה בשמירת הנתונים ❌", "red");
+            }
+        };
+
+        function showAdminNotice(msg, color) {
+            const container = document.getElementById('adminTabSettings');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `p-2 mt-2 text-center text-xs rounded bg-${color}-500/20 text-${color}-400 border border-${color}-500/40`;
+            alertDiv.innerText = msg;
+            container.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+
+        // Active listener to fetch RSVPs live from database and trigger bells/notifications
+        function listenToRsvps() {
+            if (!isUserAuthenticated) return;
+            const rsvpsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rsvps');
+
+            onSnapshot(rsvpsRef, (snapshot) => {
+                const rsvpList = [];
+                snapshot.forEach((doc) => {
+                    rsvpList.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (localRsvpCount !== -1 && rsvpList.length > localRsvpCount) {
+                    playBoxingBell();
+                }
+                localRsvpCount = rsvpList.length;
+
+                updateAdminDashboard(rsvpList);
+            }, (error) => {
+                console.error("Error fetching live RSVPs:", error);
+            });
+        }
+
+        // Handle Form Submissions and send Outbound notifications (Webhook + WhatsApp)
+        document.getElementById('rsvpForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> רושם אותך לזירה...';
+
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+
+            const rsvpData = {
+                firstName,
+                lastName,
+                phone,
+                attending: selectedAttending,
+                paid: false,
+                submittedAt: new Date().toISOString(),
+                userId: auth.currentUser ? auth.currentUser.uid : 'anonymous'
+            };
+
+            // STRICT 2.5-SECOND TIMEOUT HELPER TO PREVENT "HANGING" IN THE BROWSER
+            const timeoutPromise = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms));
+
+            try {
+                // Try saving to Firebase with the strict timeout race
+                await Promise.race([
+                    (async () => {
+                        if (!isUserAuthenticated) {
+                            await authenticateUser();
+                        }
+                        if (isUserAuthenticated) {
+                            const rsvpsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rsvps');
+                            await addDoc(rsvpsRef, rsvpData);
+                        } else {
+                            throw new Error("Auth not completed");
+                        }
+                    })(),
+                    timeoutPromise(2500)
+                ]);
+
+                console.log("Saved to Firebase successfully!");
+
+            } catch (error) {
+                console.warn("Database save took too long or failed. Falling back to LocalStorage instantly.", error);
+                
+                // Fallback directly to local storage to keep the app 100% functional
+                try {
+                    const localRsvps = JSON.parse(localStorage.getItem('local_rsvps') || '[]');
+                    localRsvps.push(rsvpData);
+                    localStorage.setItem('local_rsvps', JSON.stringify(localRsvps));
+                } catch (e) {
+                    console.error("Failed to save to localStorage:", e);
+                }
+            } finally {
+                // Transition instantly to the success screen
+                transitionToSuccess(rsvpData);
+                
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>שלח אישור הגעה!</span> <i class="fa-solid fa-paper-plane"></i>';
+            }
+        });
+
+        function transitionToSuccess(rsvpData) {
+            // Hide Form and reveal success panel
+            document.getElementById('rsvpFormContainer').classList.add('hidden');
+            document.getElementById('successState').classList.remove('hidden');
+
+            // Force Dashboard render update locally
+            if (typeof window.triggerLocalRefresh === 'function') {
+                window.triggerLocalRefresh();
+            }
+
+            // Always prioritize WhatsApp direct notify to 0524300761
+            const targetPhone = "972524300761";
+            const statusText = rsvpData.attending ? "מגיע להילחם!" : "לא אצליח להגיע";
+            const messageText = encodeURIComponent(`היי, נרשמתי ל-Water Goal כדורגל מים!\nשם: ${rsvpData.firstName} ${rsvpData.lastName}\nטלפון: ${rsvpData.phone}\nסטטוס הגעה: ${statusText} 🥊`);
+            const waUrl = `https://wa.me/${targetPhone}?text=${messageText}`;
+            
+            // Set href for button fallback
+            document.getElementById('waDirectBtn').href = waUrl;
+
+            // Instantly open the WhatsApp window directly so they can click 'send' immediately
+            try {
+                window.open(waUrl, '_blank');
+            } catch (err) {
+                console.warn("Pop-up blocker prevented auto-opening WhatsApp chat.", err);
+            }
+
+            // Send Discord alert if configured
+            if (window.adminConfig && window.adminConfig.webhookUrl) {
+                sendWebhookAlert(rsvpData);
+            }
+        }
+
+        // Trigger Discord webhook directly from page
+        async function sendWebhookAlert(rsvp) {
+            try {
+                const statusSymbol = rsvp.attending ? "🥊" : "❌";
+                const statusText = rsvp.attending ? "מגיע/ה להילחם!" : "לא מגיע/ה";
+                const payload = {
+                    embeds: [{
+                        title: "🥊 רישום חדש לטורניר Water Goal כדורגל מים!",
+                        color: rsvp.attending ? 1544256 : 15728640,
+                        fields: [
+                            { name: "👤 שם משתתף", value: `${rsvp.firstName} ${rsvp.lastName}`, inline: true },
+                            { name: "📱 מספר טלפון", value: rsvp.phone, inline: true },
+                            { name: "🚦 סטטוס הגעה", value: `${statusSymbol} ${statusText}`, inline: false }
+                        ],
+                        timestamp: new Date().toISOString()
+                    }]
+                };
+
+                await fetch(window.adminConfig.webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) {
+                console.warn("Discord Webhook notification failed to deliver:", e);
+            }
+        }
+
+        // Global selectors and state functions
+        window.selectAttendance = function(attending) {
+            selectedAttending = attending;
+            const btnYes = document.getElementById('btnYes');
+            const btnNo = document.getElementById('btnNo');
+
+            if (attending) {
+                btnYes.className = "py-3 px-4 rounded-xl border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all";
+                btnNo.className = "py-3 px-4 rounded-xl border border-slate-700 bg-stormy-900 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-red-500/10 transition-all";
+            } else {
+                btnYes.className = "py-3 px-4 rounded-xl border border-slate-700 bg-stormy-900 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-500/10 transition-all";
+                btnNo.className = "py-3 px-4 rounded-xl border-2 border-red-500 bg-red-500/20 text-red-400 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all";
+            }
+        };
+
+        window.resetForm = function() {
+            document.getElementById('rsvpForm').reset();
+            document.getElementById('rsvpFormContainer').classList.remove('hidden');
+            document.getElementById('successState').classList.add('hidden');
+            selectAttendance(true);
+        };
+
+        // Initialize session on load
+        authenticateUser();
+    </script>
+
+    <script>
+        function initCountdown() {
+            const countdownDate = new Date("August 31, 2026 09:45:00").getTime();
+            
+            function updateCountdown() {
+                const now = new Date().getTime();
+                const difference = countdownDate - now;
+                
+                if (difference < 0) {
+                    document.getElementById("countdownContainer").innerHTML = `
+                        <div class="text-emerald-400 font-black text-sm py-1.5">הזירה פתוחה כעת! הקרבות החלו! 🥊</div>
+                    `;
+                    clearInterval(countdownInterval);
+                    return;
+                }
+                
+                const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+                
+                document.getElementById("days").innerText = String(days).padStart(2, '0');
+                document.getElementById("hours").innerText = String(hours).padStart(2, '0');
+                document.getElementById("minutes").innerText = String(minutes).padStart(2, '0');
+                document.getElementById("seconds").innerText = String(seconds).padStart(2, '0');
+            }
+            
+            updateCountdown();
+            const countdownInterval = setInterval(updateCountdown, 1000);
+        }
+        
+        window.addEventListener('DOMContentLoaded', initCountdown);
+
+        // Synthesizes a realistic metallic boxing ring bell ring using the Web Audio API
+        function playBoxingBell() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = ctx.currentTime;
+                
+                // Classic ring/metallic bell frequency lineup
+                const frequencies = [300, 440, 580, 720, 880, 1100];
+                frequencies.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+                    
+                    // Decaying tone
+                    gainNode.gain.setValueAtTime(0.12, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    osc.start(now);
+                    osc.stop(now + 2);
+                });
+            } catch (err) {
+                console.log("AudioContext blocked or uninitialized:", err);
+            }
+        }
+
+        let adminOpen = false;
+        function toggleAdminPanel() {
+            adminOpen = !adminOpen;
+            const content = document.getElementById('adminPanelContent');
+            const chevron = document.getElementById('adminChevron');
+            
+            if (adminOpen) {
+                content.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+        }
+
+        // Updated code authentication to exactly 2014
+        function verifyAdmin() {
+            const passcode = document.getElementById('adminPasscode').value;
+            if (passcode === '2014') {
+                document.getElementById('adminAuthSection').classList.add('hidden');
+                document.getElementById('adminAuthorizedArea').classList.remove('hidden');
+                updateAdminDashboard([]); // triggers combined render with local database
+            } else {
+                const helperText = document.createElement('div');
+                helperText.className = "text-xs text-red-500 text-center mt-1";
+                helperText.innerText = "קוד לא נכון! נסה שוב.";
+                document.getElementById('adminAuthSection').appendChild(helperText);
+                setTimeout(() => helperText.remove(), 2500);
+            }
+        }
+
+        function switchAdminTab(tab) {
+            const statsBtn = document.getElementById('tabStatsBtn');
+            const settingsBtn = document.getElementById('tabSettingsBtn');
+            const statsPanel = document.getElementById('adminTabStats');
+            const settingsPanel = document.getElementById('adminTabSettings');
+
+            if (tab === 'stats') {
+                statsBtn.className = "py-1.5 text-xs font-black text-emerald-400 border-b-2 border-emerald-500 transition-all";
+                settingsBtn.className = "py-1.5 text-xs font-black text-slate-400 hover:text-white transition-all";
+                statsPanel.classList.remove('hidden');
+                settingsPanel.classList.add('hidden');
+            } else {
+                settingsBtn.className = "py-1.5 text-xs font-black text-emerald-400 border-b-2 border-emerald-500 transition-all";
+                statsBtn.className = "py-1.5 text-xs font-black text-slate-400 hover:text-white transition-all";
+                settingsPanel.classList.remove('hidden');
+                statsPanel.classList.add('hidden');
+            }
+        }
+
+        let lastKnownRsvps = [];
+        function updateAdminDashboard(rsvpList) {
+            lastKnownRsvps = rsvpList || [];
+            renderCombinedRsvps();
+        }
+
+        // Local storage updates triggers
+        window.triggerLocalRefresh = function() {
+            renderCombinedRsvps();
+        };
+
+        function renderCombinedRsvps() {
+            let localList = [];
+            try {
+                localList = JSON.parse(localStorage.getItem('local_rsvps') || '[]');
+            } catch (err) {
+                console.error("Local storage retrieval failed:", err);
+            }
+
+            // Combine list avoiding exact name/phone duplicates
+            const combinedMap = new Map();
+            lastKnownRsvps.forEach(rsvp => {
+                const key = `${rsvp.firstName}-${rsvp.lastName}-${rsvp.phone}`;
+                combinedMap.set(key, { ...rsvp, isLocal: false, localKey: key });
+            });
+            localList.forEach(rsvp => {
+                const key = `${rsvp.firstName}-${rsvp.lastName}-${rsvp.phone}`;
+                if (!combinedMap.has(key)) {
+                    combinedMap.set(key, { ...rsvp, isLocal: true, localKey: key });
+                }
+            });
+
+            const rsvpList = Array.from(combinedMap.values());
+
+            const total = rsvpList.length;
+            const coming = rsvpList.filter(r => r.attending).length;
+            const notComing = total - coming;
+            const cash = coming * 95;
+
+            // Compute paid stats
+            const collectedAmount = rsvpList.filter(r => r.attending && r.paid).length * 95;
+            const pendingAmount = cash - collectedAmount;
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statComing').innerText = coming;
+            document.getElementById('statNotComing').innerText = notComing;
+            document.getElementById('statCash').innerText = `${cash.toLocaleString()} ₪`;
+            document.getElementById('statCollected').innerText = `${collectedAmount.toLocaleString()} ₪`;
+            document.getElementById('statPending').innerText = `${pendingAmount.toLocaleString()} ₪`;
+
+            const tbody = document.getElementById('adminTableBody');
+            if (rsvpList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500">אין עדיין נרשמים...</td></tr>`;
+                return;
+            }
+
+            const sortedList = [...rsvpList].sort((a, b) => b.attending - a.attending);
+            tbody.innerHTML = sortedList.map(rsvp => {
+                const badgeClass = rsvp.attending 
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                    : "bg-red-500/10 text-red-400 border-red-500/20";
+                const badgeText = rsvp.attending ? "מגיע 🥊" : "לא מגיע ❌";
+                const rsvpName = `${rsvp.firstName} ${rsvp.lastName}`;
+                const rsvpId = rsvp.id || '';
+                const isPaid = !!rsvp.paid;
+                
+                const paidBadgeClass = isPaid
+                    ? "bg-emerald-500 text-black border-emerald-600 hover:bg-emerald-400"
+                    : "bg-slate-950 text-slate-400 border-slate-700 hover:bg-slate-800 hover:text-slate-300";
+                const paidText = isPaid ? "שולם 💰" : "לא שולם 💸";
+                
+                return `
+                    <tr class="hover:bg-slate-800/40 transition-colors">
+                        <td class="p-2 font-bold text-slate-200">
+                            <div class="truncate max-w-[120px]">${rsvpName}</div>
+                            <div class="text-[9px] text-slate-500 font-mono text-right dir-ltr">${rsvp.phone}</div>
+                        </td>
+                        <td class="p-2 text-center">
+                            <!-- Clickable Toggle to quickly register Payment Status -->
+                            <button onclick="togglePayment('${rsvpId}', ${rsvp.isLocal}, '${rsvp.localKey}', ${isPaid})" 
+                                    class="px-2 py-1 rounded-lg border text-[9px] font-black transition-all ${paidBadgeClass}">
+                                ${paidText}
+                            </button>
+                        </td>
+                        <td class="p-2 text-center">
+                            <span class="inline-block px-1.5 py-0.5 rounded-full border text-[9px] font-black ${badgeClass}">
+                                ${badgeText}
+                            </span>
+                        </td>
+                        <td class="p-2 text-center">
+                            <button onclick="openDeleteModal('${rsvpId}', '${rsvpName}', ${rsvp.isLocal}, '${rsvp.localKey}')" 
+                                    class="text-red-400 hover:text-red-500 hover:bg-red-500/15 p-1.5 rounded-xl transition-all"
+                                    title="מחק משתתף">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
